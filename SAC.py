@@ -10,6 +10,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from Replay_Buffer import ReplayBuffer
 
+
+
 class SAC_Agent():
 
     def __init__(self, Actor_args, QNetwork_args, device, q_lr, policy_lr, autotune, alpha, gamma, target_network_frequency, tau,
@@ -42,9 +44,7 @@ class SAC_Agent():
                                             goal_space_dim=[Actor_args['goal_dim']],
                                             buffer_size=100000)
 
-    def get_action(self, obs, goal, eps, deterministic=False):
-        if (deterministic == True):
-            return self.actor(obs, goal)[0].detach().cpu().numpy()
+    def get_action(self, obs, goal):
         return self.actor.get_action(obs, goal)[0].detach().cpu().numpy()
 
     def update(self):
@@ -126,15 +126,13 @@ class Actor(nn.Module):
         std = log_std.exp()
         normal = torch.distributions.Normal(mean, std)
         x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
-        y_t = torch.tanh(x_t)
+        
         if(self.level=='lower'):
+            y_t = torch.tanh(x_t)
             action = y_t * self.action_scale + self.action_bias
-        log_prob = normal.log_prob(x_t)
-        # Enforcing Action Bound
-        log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + 1e-6)
-        log_prob = log_prob.sum(1, keepdim=True)
-        mean = torch.tanh(mean) * self.action_scale + self.action_bias
-        return action, log_prob, mean
+        else:
+            action = x_t
+        return action, {'mean':mean,'std':std}
 
 class SoftQNetwork(nn.Module):
     def __init__(self, obs_dim, goal_dim, action_dim):

@@ -10,6 +10,8 @@ def VAE_args():
     parser.add_argument('--hidden_dim_2',type=int,default=128,help='Second Hidden Dimension')
     parser.add_argument('--hidden_dim_3',type=int,default=64,help='Third Hidden Dimension')
     parser.add_argument('--lr',type=float,default=0.001,help='Learning rate for varitaional autoencoder')
+    parser.add_argument('--m',type=float,default=10,help='Hyper parameter for loss function')
+    parser.add_argument('--batch_size',type=int,default=256,help="Batch size")
     args = parser.parse_args()
     return args
 
@@ -17,6 +19,8 @@ def environment_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_id',type=str,default='Ant-v4',help="Environment_name")
     parser.add_argument('--lower_horizon',type = int,default=10,help='Max steps for lower agent for a given subgoal')
+    parser.add_argument('--higher_horizon',type = int,default=10,help='Max steps for higher agent for a given subgoal')
+    parser.add_argument('--KL_threshold',type=float,default=0.01,help="KL divergence threshold for goal reaching")
     args = parser.parse_args()
     return args
 

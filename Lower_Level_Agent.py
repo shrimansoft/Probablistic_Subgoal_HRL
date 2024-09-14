@@ -5,6 +5,7 @@ import Arguments
 
 lower_agent_args = Arguments.Lower_level_args()
 VAE_args = Arguments.VAE_args()
+
 class Lower_Agent():
     def __init__(self,env):
         self.env = env

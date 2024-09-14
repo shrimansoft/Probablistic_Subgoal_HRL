@@ -46,11 +46,13 @@ class VAE(nn.Module):
         z = self.reparameterization(mean=mean,std=std)
         output = self.decoder(z)
 
-        return {'output':output,'mean':mean,'std':std}
+        return output,{'mean':mean,'std':std}
     
 class VAE_representation_network():
-    def __init__(self,env):
-        self.args = Arguments.VAE_args()
+    def __init__(self,env,args,lower_agent,higher_agent):
+        self.args = args
+        self.lower_agent = lower_agent
+        self.higher_agent = higher_agent
         self.env = env
         self.VAE_network = VAE(self.args.hidden_dim_1,
                                self.args.hidden_dim_2,
@@ -63,14 +65,22 @@ class VAE_representation_network():
     def get_distribution(self,state):
         return self.VAE_network(state)
 
-    def update(self,state_1,state_2):
+    def update(self,level):
         state_1 = state_1.to(self.args.device)
         state_2 = state_2.to(self.args.device)
-        representation_state_1 = self.VAE_network(state_1)
-        representation_state_2 = self.VAE_network(state_2)
+        representation_1 = self.VAE_network(state_1)
+        representation_2 = self.VAE_network(state_2)
+        representation_state_1 =representation_1[-1]
+        representation_state_2 = representation_2[-1]
+        output_1 = representation_1[0]
+        output_2 = representation_2[0]
+        reconstruction_loss = torch.norm(state_1-output_1,dim=1)+torch.norm(state_2-output_2,dim=1)
         Distribution_1 = {'mean':representation_state_1['mean'],'std':representation_state_1['std']}
         Distribution_2 = {'mean':representation_state_2['mean'],'std':representation_state_2['std']}
-        Loss = KL_Divergence(Distribution_1,Distribution_2)
+        if level=='higher':
+            Loss = torch.max(0,self.args.m-KL_Divergence(Distribution_1,Distribution_2))+reconstruction_loss
+        else :
+            Loss = KL_Divergence(Distribution_1,Distribution_2)+reconstruction_loss
         self.optimizer.zero_grad()
         Loss.backward()
         self.optimizer.step()
