@@ -26,10 +26,15 @@ def get_lower_reward(next_observation,subgoal,VAE_Network):
     reward = -torch.norm(Distribution_next,subgoal)
     return reward.detach().cpu().numpy()
         
-def is_subgoal_reached(observation,goal,threshold):
-    pass
-def is_goal_reached():
-    pass
+def is_subgoal_reached(next_observation,subgoal,threshold,VAE_Network):
+    subgoal = torch.tensor(subgoal[1])
+    achieved_goal = torch.tensor(next_observation).to(device)
+    with torch.no_grad():
+        Distribution_next = VAE_Network(achieved_goal)
+        KL_Divergence = KL_Divergence(Distribution_next,subgoal)
+    return KL_Divergence < environment_args.KL_threshold
+
+
 
 def lower_rollout(env,lower_agent,observation, subgoal,env_args,VAE_network,evaluation=False):
     k=env_args.lower_horizon
@@ -38,16 +43,28 @@ def lower_rollout(env,lower_agent,observation, subgoal,env_args,VAE_network,eval
     transitions = []
 
     for _ in range(k):
-        action = lower_agent.get_action(torch.tensor(observation['observation']), torch.tensor(subgoal)).squeeze()
+        action = lower_agent.get_action(torch.tensor(observation['observation']), torch.tensor(subgoal[0])).squeeze()
         next_obs, env_reward, terminated, truncated, info = env.step(action)
         aggregate_reward += env_reward
-        subgoal_achieved = is_subgoal_reached(next_obs['achieved_goal'], subgoal,environment_args.KL_threshold)
+        subgoal_achieved = is_subgoal_reached(next_obs['observation'],
+                                               subgoal,environment_args.KL_threshold,
+                                               VAE_network)
         lower_reward = get_lower_reward(next_obs, subgoal,VAE_network)
         if evaluation is False:
-            lower_agent.replay_buffer.add(obs['observation'], action, lower_reward, next_obs['observation'], done=subgoal_achieved, goal=subgoal)
+            lower_agent.replay_buffer.add(obs['observation'],
+                                        action,
+                                        lower_reward,
+                                        next_obs['observation'],
+                                        done=subgoal_achieved,
+                                        goal=subgoal)
             lower_agent.update()
             VAE_network.update(level='lower')
-        transitions.append([obs, action, lower_reward, next_obs, subgoal, subgoal_achieved, info])
+        transitions.append([obs,
+                             action,
+                               lower_reward,
+                                 next_obs, subgoal,
+                                   subgoal_achieved,
+                                     info])
         obs = next_obs.copy()
         if(subgoal_achieved or terminated or truncated):
             break
@@ -59,10 +76,20 @@ def higher_rollout(env,higher_agent,lower_agent,observation,goal,env_args,VAE_ne
     for _ in range(k):
         subgoal = higher_agent.get_action()
         observation=observation
-        obs,aggregate_reward,terminated,truncated,info,transitions = lower_rollout(env,lower_agent,observation,subgoal,env_args,VAE_network,evaluation)
-        done = is_goal_reached()
+        obs,aggregate_reward,terminated,truncated,info,transitions = lower_rollout(env,
+                                                                                   lower_agent,
+                                                                                   observation,
+                                                                                   subgoal,
+                                                                                   env_args,
+                                                                                   VAE_network,
+                                                                                   evaluation)
+        done = terminated or truncated
         if evaluation == False:
-            higher_agent.replay_buffer.add(observation['observation'],subgoal,aggregate_reward,obs['observation'],done=done ,goal=goal)
+            higher_agent.replay_buffer.add(observation['observation'],
+                                           subgoal,
+                                           aggregate_reward,
+                                           obs['observation'],
+                                           done=done ,goal=goal)
             higher_agent.update()
             VAE_network.update(level='higher')
         observation = obs

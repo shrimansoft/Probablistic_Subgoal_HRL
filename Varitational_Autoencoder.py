@@ -66,8 +66,14 @@ class VAE_representation_network():
         return self.VAE_network(state)
 
     def update(self,level):
-        state_1 = state_1.to(self.args.device)
-        state_2 = state_2.to(self.args.device)
+        if level=='higher':
+            observations, actions, rewards, next_observations, goals, dones = self.higher_agent.replay_buffer.sample(self.args.batch_size)
+            state_1 = observations
+            state_2 = next_observations
+        else:
+            observations, _, _, next_observations,_,_ = self.lower_agent.replay_buffer.sample(self.args.batch_size)
+            state_1 = observations
+            state_2 = next_observations  
         representation_1 = self.VAE_network(state_1)
         representation_2 = self.VAE_network(state_2)
         representation_state_1 =representation_1[-1]
