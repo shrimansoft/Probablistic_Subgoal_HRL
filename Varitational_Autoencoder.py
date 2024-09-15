@@ -21,12 +21,13 @@ class VAE(nn.Module):
         self.log_std = nn.Linear(in_features=hidden_dim_3,out_features=latent_dim)
 
         self.decoder = nn.Sequential(
-            nn.Linear(in_features=latent_dim,out_features=hidden_dim_1),
+            nn.Linear(in_features=latent_dim,out_features=hidden_dim_3),
             nn.LeakyReLU(),
-            nn.Linear(in_features=hidden_dim_1,out_features=hidden_dim_2),
+            nn.Linear(in_features=hidden_dim_3,out_features=hidden_dim_2),
             nn.LeakyReLU(),
-            nn.Linear(in_features=hidden_dim_2,out_features=out_dim),
-            nn.Tanh()
+            nn.Linear(in_features=hidden_dim_2,out_features=hidden_dim_3),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=hidden_dim_3,out_features=out_dim),           
         )
         self.device = device
         self.LOG_STD_MAX =  1
@@ -57,8 +58,10 @@ class VAE_representation_network():
         self.VAE_network = VAE(self.args.hidden_dim_1,
                                self.args.hidden_dim_2,
                                self.args.hidden_dim_3,
-                               self.env.observation_space['observation'].shape,
-                               self.args.latent_dim,self.args.device)
+                               self.env.observation_space['observation'].shape[0],
+                               self.args.latent_dim,
+                               self.env.action_space.shape[0],
+                               self.args.device)
         self.optimizer = optim.Adam(list(self.VAE_network.parameters()), lr=self.args.lr)
         
 

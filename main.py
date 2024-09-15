@@ -8,15 +8,18 @@ from Lower_Level_Agent import Lower_Agent
 from Higher_Level_Agent import Higher_Agent
 from Loss import KL_Divergence
 from torch.utils.tensorboard import SummaryWriter
+from Varitational_Autoencoder import VAE_representation_network
+import os
 
-environment_args = Arguments.environment_args()
+os.add_dll_directory("C://Users//jaygu//.mujoco//mujoco210//bin")
+
+env_args = Arguments.environment_args()
 lower_agent_args = Arguments.Lower_level_args()
 higer_agent_args = Arguments.Higher_level_args()
 VAE_args = Arguments.VAE_args()
-
-env= gym.make(environment_args.env_id,render_mode="human")
-env.reset()
-device = 'cuda:0'
+run_name = f"{int(time.time())}"           
+writer = SummaryWriter(f"runs/{run_name}")
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 def get_lower_reward(next_observation,subgoal,VAE_Network):
     next_observation = torch.tensor(next_observation['observation']).to(device)
@@ -32,11 +35,11 @@ def is_subgoal_reached(next_observation,subgoal,threshold,VAE_Network):
     with torch.no_grad():
         Distribution_next = VAE_Network(achieved_goal)
         KL_Divergence = KL_Divergence(Distribution_next,subgoal)
-    return KL_Divergence < environment_args.KL_threshold
+    return KL_Divergence < threshold
 
 
 
-def lower_rollout(env,lower_agent,observation, subgoal,env_args,VAE_network,evaluation=False):
+def lower_rollout(env,lower_agent,observation, subgoal,VAE_network,evaluation=False):
     k=env_args.lower_horizon
     aggregate_reward = 0
     
@@ -47,7 +50,7 @@ def lower_rollout(env,lower_agent,observation, subgoal,env_args,VAE_network,eval
         next_obs, env_reward, terminated, truncated, info = env.step(action)
         aggregate_reward += env_reward
         subgoal_achieved = is_subgoal_reached(next_obs['observation'],
-                                               subgoal,environment_args.KL_threshold,
+                                               subgoal,env_args.KL_threshold,
                                                VAE_network)
         lower_reward = get_lower_reward(next_obs, subgoal,VAE_network)
         if evaluation is False:
@@ -70,7 +73,7 @@ def lower_rollout(env,lower_agent,observation, subgoal,env_args,VAE_network,eval
             break
     return obs, aggregate_reward, terminated, truncated, info, transitions
 
-def higher_rollout(env,higher_agent,lower_agent,observation,goal,env_args,VAE_network,evaluation=False):
+def higher_rollout(env,higher_agent,lower_agent,observation,goal,VAE_network,evaluation=False):
     k = env_args.higher_horizon
 
     for _ in range(k):
@@ -80,7 +83,6 @@ def higher_rollout(env,higher_agent,lower_agent,observation,goal,env_args,VAE_ne
                                                                                    lower_agent,
                                                                                    observation,
                                                                                    subgoal,
-                                                                                   env_args,
                                                                                    VAE_network,
                                                                                    evaluation)
         done = terminated or truncated
@@ -95,9 +97,15 @@ def higher_rollout(env,higher_agent,lower_agent,observation,goal,env_args,VAE_ne
         observation = obs
 
 
+print(gym.envs.registry.keys())
+env= gym.make(env_args.env_id,render_mode="human",max_episode_steps=1000)
+observation, info = env.reset()
+goal = observation['desired_goal']
+higher_agent = Higher_Agent(env).init_agent()
+lower_agent = Lower_Agent(env).init_agent()
+VAE_Network = VAE_representation_network(env,VAE_args,lower_agent,higher_agent)
 
-
-
+higher_rollout(env,higher_agent,lower_agent,observation,goal,VAE_Network,evaluation=False)
 
 
 

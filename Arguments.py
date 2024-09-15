@@ -17,7 +17,7 @@ def VAE_args():
 
 def environment_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env_id',type=str,default='Ant-v4',help="Environment_name")
+    parser.add_argument('--env_id',type=str,default='AntMaze_UMaze-v4',help="Environment_name")
     parser.add_argument('--lower_horizon',type = int,default=10,help='Max steps for lower agent for a given subgoal')
     parser.add_argument('--higher_horizon',type = int,default=10,help='Max steps for higher agent for a given subgoal')
     parser.add_argument('--KL_threshold',type=float,default=0.01,help="KL divergence threshold for goal reaching")
@@ -35,6 +35,7 @@ def Lower_level_args():
     parser.add_argument('--target_network_frequency',type=int,default=1,help="")
     parser.add_argument('--tau',type=float,default=0.05,help="Polyak constant")
     args = parser.parse_args()
+    return args
 
 def Higher_level_args():
     parser = argparse.ArgumentParser()
@@ -47,3 +48,4 @@ def Higher_level_args():
     parser.add_argument('--target_network_frequency',type=int,default=1,help="")
     parser.add_argument('--tau',type=float,default=0.05,help="Polyak constant")
     args = parser.parse_args()
+    return args
