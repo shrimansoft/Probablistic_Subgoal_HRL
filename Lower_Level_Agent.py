@@ -12,8 +12,8 @@ class Lower_Agent():
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.action_scale_low = torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float32)
         self.action_bias_low = torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float32)
-        self.obs_dim =env.observation_space['observation'].shape
-        self.action_dim=env.action_space.shape
+        self.obs_dim =env.observation_space['observation'].shape[0]
+        self.action_dim=env.action_space.shape[0]
         self.goal_dim = VAE_args.latent_dim
 
 

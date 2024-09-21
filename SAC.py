@@ -45,14 +45,22 @@ class SAC_Agent():
                                             buffer_size=100000)
 
     def get_action(self, obs, goal):
-        return self.actor.get_action(obs, goal)[0].detach().cpu().numpy()
+        return self.actor.get_action(obs, goal)
 
     def update(self):
         observations, actions, rewards, next_observations, goals, dones = self.replay_buffer.sample(self.batch_size)
-        next_state_actions, next_state_log_pi, _ = self.actor.get_action(next_observations, goals)
-        qf1_next_target = self.qf1_target(next_observations, next_state_actions, goals)
-        qf2_next_target = self.qf2_target(next_observations, next_state_actions, goals)
+        #observations.shape = (batch_size,27)
+        #actions.shape = (batch_size,8)
+        #rewards.shape = (batch_size)
+        #next_observations.shape = (batch_size,27)
+        #goals.shape = (batch_size,2)
+        #dones.shape = (batch_size)
+        action = self.actor.get_action(next_observations, goals)
+        next_state_actions, next_state_log_pi, _ =action[0],action[1],action[-1]['mean']
+        qf1_next_target = self.qf1_target(next_observations, next_state_actions, goals) #shape = (1,1)
+        qf2_next_target = self.qf2_target(next_observations, next_state_actions, goals) #shape = (1,1)
         min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - self.alpha * next_state_log_pi
+
         next_q_value = rewards.flatten() + (1 - dones.flatten()) * self.gamma * (min_qf_next_target).view(-1)
 
         qf1_a_values = self.qf1(observations, actions, goals).view(-1)
@@ -66,8 +74,8 @@ class SAC_Agent():
         qf_loss.backward()
         self.q_optimizer.step()
 
-
-        pi, log_pi, _ = self.actor.get_action(observations, goals)
+        action = self.actor.get_action(next_observations, goals)
+        pi, log_pi, _ = action[0],action[1],action[-1]['mean']
         qf1_pi = self.qf1(observations, pi, goals)
         qf2_pi = self.qf2(observations, pi, goals)
         min_qf_pi = torch.min(qf1_pi, qf2_pi)
@@ -104,8 +112,8 @@ class Actor(nn.Module):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.level =  level
         self.action_scale, self.action_bias = action_scale.to(self.device), action_bias.to(self.device)
-        self.LOG_STD_MAX =  1
-        self.LOG_STD_MIN = -1
+        self.LOG_STD_MAX = 1
+        self.LOG_STD_MIN = 0
         self.double()
 
     def forward(self, x, g):
@@ -115,6 +123,7 @@ class Actor(nn.Module):
         x = F.relu(self.fc1(torch.cat([x, g], dim=-1)))
         x = F.relu(self.fc2(x))
         mean = self.fc_mean(x)
+        
         log_std = self.fc_logstd(x)
         log_std = torch.tanh(log_std)
         log_std = self.LOG_STD_MIN + 0.5 * (self.LOG_STD_MAX - self.LOG_STD_MIN) * (log_std + 1)  # From SpinUp / Denis Yarats
@@ -126,13 +135,16 @@ class Actor(nn.Module):
         std = log_std.exp()
         normal = torch.distributions.Normal(mean, std)
         x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
-        
+        log_prob = normal.log_prob(x_t)
         if(self.level=='lower'):
             y_t = torch.tanh(x_t)
             action = y_t * self.action_scale + self.action_bias
+            log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + 1e-6)
         else:
             action = x_t
-        return action, {'mean':mean,'std':std}
+        
+        log_prob = torch.sum(log_prob,dim=1, keepdim=True)
+        return action, log_prob,{'mean':mean,'std':std}
 
 class SoftQNetwork(nn.Module):
     def __init__(self, obs_dim, goal_dim, action_dim):
@@ -145,7 +157,7 @@ class SoftQNetwork(nn.Module):
 
     def forward(self, x, a, g):
         x, a, g = x.to(self.device), a.to(self.device), g.to(self.device)
-        x = torch.cat([x, a, g], 1)
+        x = torch.cat([x, a, g], -1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)

@@ -13,9 +13,9 @@ class Higher_Agent():
         self.latent_dim_low = -1
         self.action_scale_high = torch.tensor((self.latent_dim_high - self.latent_dim_low) / 2.0, dtype=torch.float32)
         self.action_bias_high = torch.tensor((self.latent_dim_high + self.latent_dim_low) / 2.0, dtype=torch.float32)
-        self.obs_dim =env.observation_space['observation'].shape
+        self.obs_dim =env.observation_space['observation'].shape[0]
         self.action_dim=VAE_args.latent_dim
-        self.goal_dim =  env.observation_space['desired_goal']
+        self.goal_dim =  env.observation_space['desired_goal'].shape[0]
 
 
     def init_agent(self):

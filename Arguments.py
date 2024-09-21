@@ -17,10 +17,12 @@ def VAE_args():
 
 def environment_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env_id',type=str,default='AntMaze_UMaze-v4',help="Environment_name")
+    parser.add_argument('--env_id',type=str,default='PointMaze_UMazeDense-v3',help="Environment_name")
     parser.add_argument('--lower_horizon',type = int,default=10,help='Max steps for lower agent for a given subgoal')
-    parser.add_argument('--higher_horizon',type = int,default=10,help='Max steps for higher agent for a given subgoal')
+    parser.add_argument('--higher_horizon',type = int,default=100,help='Max steps for lower agent for a given subgoal')
     parser.add_argument('--KL_threshold',type=float,default=0.01,help="KL divergence threshold for goal reaching")
+    parser.add_argument('--episodes',type=int,default=20000,help="Number of episodes")
+    parser.add_argument('--goal_threshold',type=float,default=0.01,help="KL divergence threshold for goal reaching")
     args = parser.parse_args()
     return args
 

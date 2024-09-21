@@ -39,6 +39,7 @@ class VAE(nn.Module):
         return z
     
     def forward(self,state):
+        state = torch.tensor(state,dtype=torch.float32)
         hidden_representation = self.encoder(state)
         mean = self.mean(hidden_representation)
         log_std  =self.log_std(hidden_representation)
@@ -50,18 +51,19 @@ class VAE(nn.Module):
         return output,{'mean':mean,'std':std}
     
 class VAE_representation_network():
-    def __init__(self,env,args,lower_agent,higher_agent):
+    def __init__(self,env,args,lower_agent,higher_agent,device):
         self.args = args
         self.lower_agent = lower_agent
         self.higher_agent = higher_agent
         self.env = env
+        self.device = device
         self.VAE_network = VAE(self.args.hidden_dim_1,
                                self.args.hidden_dim_2,
                                self.args.hidden_dim_3,
                                self.env.observation_space['observation'].shape[0],
                                self.args.latent_dim,
-                               self.env.action_space.shape[0],
-                               self.args.device)
+                               self.env.observation_space['observation'].shape[0],
+                               self.args.device).to(self.device)
         self.optimizer = optim.Adam(list(self.VAE_network.parameters()), lr=self.args.lr)
         
 
@@ -70,7 +72,7 @@ class VAE_representation_network():
 
     def update(self,level):
         if level=='higher':
-            observations, actions, rewards, next_observations, goals, dones = self.higher_agent.replay_buffer.sample(self.args.batch_size)
+            observations,_, _, next_observations,_,_ = self.higher_agent.replay_buffer.sample(self.args.batch_size)
             state_1 = observations
             state_2 = next_observations
         else:
@@ -83,15 +85,17 @@ class VAE_representation_network():
         representation_state_2 = representation_2[-1]
         output_1 = representation_1[0]
         output_2 = representation_2[0]
-        reconstruction_loss = torch.norm(state_1-output_1,dim=1)+torch.norm(state_2-output_2,dim=1)
+
+        reconstruction_loss = torch.norm(state_1-output_1,dim=1)**2+torch.norm(state_2-output_2,dim=1)**2
         Distribution_1 = {'mean':representation_state_1['mean'],'std':representation_state_1['std']}
         Distribution_2 = {'mean':representation_state_2['mean'],'std':representation_state_2['std']}
+        KL = KL_Divergence(Distribution_1,Distribution_2)
         if level=='higher':
-            Loss = torch.max(0,self.args.m-KL_Divergence(Distribution_1,Distribution_2))+reconstruction_loss
+            Loss = torch.max(torch.zeros_like(KL).to(self.device),self.args.m-KL)+reconstruction_loss
         else :
-            Loss = KL_Divergence(Distribution_1,Distribution_2)+reconstruction_loss
+            Loss = KL+reconstruction_loss
         self.optimizer.zero_grad()
-        Loss.backward()
+        Loss.mean().backward()
         self.optimizer.step()
 
         

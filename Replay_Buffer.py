@@ -29,7 +29,7 @@ class ReplayBuffer():
         self.filled += 1
 
     def sample(self, batch_size):
-        idxs = np.random.choice(min(self.filled, self.buffer_size), batch_size, replace=False)
+        idxs = np.random.choice(min(self.filled, self.buffer_size),min(batch_size,self.filled), replace=False)
         return (torch.tensor(self.states[idxs], dtype=float).to(self.device), torch.tensor(self.actions[idxs], dtype=float).to(self.device),
                 torch.tensor(self.rewards[idxs], dtype=float).to(self.device), torch.tensor(self.next_states[idxs], dtype=float).to(self.device),
                 torch.tensor(self.goals[idxs], dtype=float).to(self.device), torch.tensor(self.dones[idxs], dtype=float).to(self.device))
