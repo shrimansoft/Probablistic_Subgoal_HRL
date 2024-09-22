@@ -75,6 +75,7 @@ def lower_rollout(env,lower_agent,observation, subgoal,VAE_network,writer,evalua
         if subgoal_achieved:
             break
         if terminated or truncated:
+            print(terminated or truncated)
             break
     return obs, aggregate_reward, terminated, truncated, info, transitions
 
@@ -109,9 +110,9 @@ def higher_rollout(env,higher_agent,lower_agent,observation,goal,VAE_network,wri
 
 
 OPEN = [[1, 1, 1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 0, 'g', 1],
         [1, 0, 0, 0, 0, 0, 1],
-        [1, 'r', 0, 0, 0, 0, 1],
+        [1, 0, 0, 0, 0, 0, 1],
+        [1, 'g', 'r', 0, 0, 0, 1],
         [1, 1, 1, 1, 1, 1, 1]]
 env= gym.make(env_args.env_id,render_mode="human",max_episode_steps=500,maze_map = OPEN)
 
