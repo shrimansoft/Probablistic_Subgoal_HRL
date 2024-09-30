@@ -12,7 +12,8 @@ from Varitational_Autoencoder import VAE_representation_network
 import os
 from torch.utils.tensorboard import SummaryWriter
 
-os.add_dll_directory("C://Users//jaygu//.mujoco//mujoco210//bin")
+if os.name == 'nt':  # Check if the operating system is Windows
+    os.add_dll_directory(os.path.expanduser("~/.mujoco/mujoco210/bin"))
 env_args = Arguments.environment_args()
 lower_agent_args = Arguments.Lower_level_args()
 higer_agent_args = Arguments.Higher_level_args()
@@ -20,6 +21,7 @@ VAE_args = Arguments.VAE_args()
 run_name = f"{int(time.time())}"           
 writer = SummaryWriter(f"runs/{run_name}")
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+#device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 total_timesteps = 0
 
 def get_lower_reward(next_observation,subgoal,VAE_Network):
@@ -30,7 +32,7 @@ def get_lower_reward(next_observation,subgoal,VAE_Network):
     return reward.detach().cpu().numpy()
         
 def is_subgoal_reached(next_observation,subgoal,threshold,VAE_Network):
-    achieved_goal = torch.tensor(next_observation).unsqueeze(0).to(device) #shape = (1,27)
+    achieved_goal = torch.tensor(next_observation,dtype=torch.float32).unsqueeze(0).to(device) #shape = (1,27)
     with torch.no_grad():
         Distribution_next = VAE_Network.get_distribution(achieved_goal)
         #subgoal['mean'].shape =(1,2) 

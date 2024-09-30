@@ -3,7 +3,7 @@ from torch.distributions import multivariate_normal
 
 
 #Implementing KL-Divergence using mean and variance from VAE
-def KL_Divergence(Distribution_1,Distribution_2,device='cuda:0'):
+def KL_Divergence(Distribution_1,Distribution_2,device='cpu'):
     
     Mean_1 , std_1 = (Distribution_1["mean"]).to(device),(Distribution_1["std"]).to(device)
     Mean_2 , std_2 = (Distribution_2["mean"]).to(device),(Distribution_2["std"]).to(device)

@@ -4,7 +4,7 @@ import argparse
 
 def VAE_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device',type=str,default='cuda:0',help="GPU device")
+    parser.add_argument('--device',type=str,default='cpu',help="GPU device")
     parser.add_argument('--latent_dim',type=int,default=2,help="Dimension the latent vector")
     parser.add_argument('--hidden_dim_1',type=int,default=256,help='First Hidden Dimension')
     parser.add_argument('--hidden_dim_2',type=int,default=128,help='Second Hidden Dimension')
